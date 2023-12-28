@@ -2,6 +2,11 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.tri as mtri
+from PIL import Image as im
+from sklearn.cluster import SpectralClustering
+from collections import Counter
 #from mpl_toolkits.mplot3d import Axes3D
 
 BLOCK_SIZE = 15
@@ -125,72 +130,182 @@ def calculate_disparity(img_left, img_right):
 
     return disparity_map
 
+def calculate_point_cloud(disp_map):
+
+    heatmap = cv2.applyColorMap(disp_map, cv2.COLORMAP_HSV)
+
+    heat_h, heat_s, heat_v = cv2.split(heatmap)
+
+    heat_mask_1 = cv2.inRange(heat_h, 0, 50)
+    heat_mask_2 = cv2.inRange(heat_h, 130, 200)
+
+    heat_mask = cv2.bitwise_or(heat_mask_1, heat_mask_2)
+
+    heat_mask = cv2.bitwise_not(heat_mask)
+
+    filtered = cv2.bitwise_and(heatmap, heatmap, mask=heat_mask)
+
+    binarized = cv2.threshold(heat_h, 0, 360, cv2.THRESH_OTSU)[1]
+
+    strel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
+    strelErode = cv2.getStructuringElement(cv2.MORPH_RECT, (17, 17))
+
+    binarized = cv2.dilate(binarized, strel)
+    binarized = cv2.erode(binarized, strelErode)
+
+    heat_binarized = cv2.bitwise_and(heatmap, heatmap, mask=binarized)
+    heat_h = cv2.bitwise_and(heat_h, heat_h, mask=binarized)
+
+    disp_map = cv2.bitwise_and(disp_map, disp_map, mask=binarized)
+    # disparity_map = cv2.bitwise_and(disparity_map, disparity_map, mask=binarized)
+
+    disparity_map = disp_map
+
+    print("disparity shape ", disparity_map.shape)
+
+    depth_matrix = np.zeros(disparity_map.shape)
+
+    for y in range(len(disparity_map)):
+        for x in range(len(disparity_map[y])):
+            z = ((FOCAL_LENGTH * T) / max(disparity_map[y][x], 1))
+            # z = 1/z
+            z = 1 / (z * 1000)
+            depth_matrix[y, x] = z
+
+    num_rows, num_cols = depth_matrix.shape
+
+    depth_matrix = np.roll(depth_matrix, shift=int(210), axis=1)
+
+    max_height = np.max(depth_matrix)
+
+    print("max height: ", max_height)
+
+    # depth_matrix = max_height - depth_matrix
+
+    points_cloud = [(j, i, max_height - depth_matrix[i, j]) for i in range(0, num_rows, 2) for j in
+                    range(0, num_cols, 2) if depth_matrix[i, j] > 100]  #
+
+
+    return points_cloud
+
+def plot_cloud(points_cloud):
+    x, y, z = zip(*points_cloud)
+
+    #plt.scatter(x, y, c=z, cmap='inferno', s=10)
+
+    triang = mtri.Triangulation(x, y)
+
+    # VerticesNodesNumbers = vnn
+    vnn = triang.triangles
+    # print("verticesNodesNumber: ", vnn)
+    a, b = vnn.shape
+    # print(a)
+
+    area_list = []
+    # in order to calculate the area of each single triangle, we need to scan
+    # the vnn 2D Array by the number of rows only.
+
+    for i in range(a):
+        t1 = (x[vnn[i][0]]) * ((y[vnn[i][1]]) - (y[vnn[i][2]]))
+        t2 = (x[vnn[i][1]]) * ((y[vnn[i][2]]) - (y[vnn[i][0]]))
+        t3 = (x[vnn[i][2]]) * ((y[vnn[i][0]]) - (y[vnn[i][1]]))
+        area_list.append(abs((t1 + t2 + t3) / 2))
+
+    areas = np.array(area_list)
+
+    vnn = [vnn[i] for i in range(a) if areas[i] <= 160]  #
+
+    trig = mtri.Triangulation(x, y, triangles=vnn)
+
+    print("x: ", len(x))
+    print("y: ", len(y))
+    print("z: ", len(z))
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # triangulation
+    trisurf = ax.plot_trisurf(trig, z, cmap='viridis', edgecolor='none', antialiased=False);
+
+    fig.colorbar(trisurf, ax=ax, shrink=0.5, aspect=5)
+
+    # point cloud
+    # sc = ax.scatter(x, y, z, c=z, cmap='viridis', s=10)
+
+    ax.set_title('Tri-Surface plot')
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    ax.view_init(elev=90, azim=-90, roll=0)
+
+    plt.show()
+
+def plot_projection(points_cloud):
+    x, y, z = zip(*points_cloud)
+
+    plt.scatter(x, z, c=y, cmap='inferno', s=10)
+    plt.show()
+
+def cluster_points(points_cloud):
+    x, y, z = zip(*points_cloud)
+
+    X = np.array([[x[i], y[i], z[i]] for i in range(len(x))])
+
+    print(X[:10])
+    print(X.shape)
+    model = SpectralClustering(n_clusters=20, affinity='nearest_neighbors',
+                               assign_labels='kmeans')
+    labels = model.fit_predict(X)
+    print(labels)
+
+    cluster_sizes = Counter(labels)
+    print(cluster_sizes)
+
+    min_cluster_size = 100  # Adjust as needed
+
+    # Identify clusters with a count below the threshold
+    small_clusters = [cluster for cluster, size in cluster_sizes.items() if size < min_cluster_size]
+    print("small: ", small_clusters)
+    # Remove points belonging to small clusters
+    filtered_points = X[~np.isin(labels, small_clusters)]
+    print(filtered_points[:10])
+    print(filtered_points.shape)
+
+    # Assign a special label (e.g., -1) to points in small clusters
+    #labels[np.isin(labels, small_clusters)] = -1
+
+    # Remove points belonging to small clusters
+    labels = labels[~np.isin(labels, small_clusters)]
+    # Now 'filtered_points' contains the points you want to keep
+
+    return filtered_points, labels
+
+def plot_3d(points, labels):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(points[:, 0], points[:, 1], points[:, 2], c=labels, s=50, cmap='viridis')
+    plt.show()
+
 left_image = cv2.imread("disparity/test-left.jpg", cv2.IMREAD_GRAYSCALE)
 right_image = cv2.imread("disparity/test-right.jpg", cv2.IMREAD_GRAYSCALE)
 
-disparity_map = calculate_disparity(left_image, right_image)
+#disparity_map = calculate_disparity(left_image, right_image).astype(np.uint8)
 
 #cv2.imwrite("disparity/disparity-map-" + str(BLOCK_SIZE) + "_" + str(SEARCH_BLOCK_WINDOW) + ".jpg", disparity_map)
 
 disp_map = cv2.imread("disparity/disparity-map-" + str(BLOCK_SIZE) + "_" + str(SEARCH_BLOCK_WINDOW) + ".jpg", cv2.IMREAD_GRAYSCALE)
 
-heatmap = cv2.applyColorMap(disp_map, cv2.COLORMAP_HSV)
+points = calculate_point_cloud(disp_map)
+#print("points: ", points)
 
-heat_h, heat_s, heat_v = cv2.split(heatmap)
+filtered, labels = cluster_points(points)
 
-heat_mask_1 = cv2.inRange(heat_h, 0, 50)
-heat_mask_2 = cv2.inRange(heat_h, 130, 200)
+#plot_3d(filtered, labels)
 
-heat_mask = cv2.bitwise_or(heat_mask_1, heat_mask_2)
-
-heat_mask = cv2.bitwise_not(heat_mask)
-
-filtered = cv2.bitwise_and(heatmap, heatmap, mask=heat_mask)
-
-binarized = cv2.threshold(heat_h,0,360,cv2.THRESH_OTSU)[1]
-
-strel = cv2.getStructuringElement(cv2.MORPH_RECT, (15,15))
-strelErode = cv2.getStructuringElement(cv2.MORPH_RECT, (17,17))
-
-binarized = cv2.dilate(binarized,strel)
-binarized = cv2.erode(binarized,strelErode)
-
-
-heat_binarized = cv2.bitwise_and(heatmap, heatmap, mask=binarized)
-heat_h = cv2.bitwise_and(heat_h, heat_h, mask=binarized)
-
-disp_map = cv2.bitwise_and(disp_map, disp_map, mask=binarized)
-#disparity_map = cv2.bitwise_and(disparity_map, disparity_map, mask=binarized)
-
-points_cloud = []
-
-for y in range(len(disparity_map)):
-    for x in range(len(disparity_map[y])):
-        z = ((FOCAL_LENGTH * T) / max(disparity_map[y][x],1))
-        z = 1/(z*1000)
-        if z > 0:
-            point = (x, y, z)
-            points_cloud.append(point)
-
-x, y, z = zip(*points_cloud)
-
-
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-
-#point cloud
-sc = ax.scatter(x, y, z, c=z, cmap='viridis', s=10)
-
-#triangulation
-#ax.plot_trisurf(x, y, z, cmap='viridis', edgecolor='none');
-
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
-
-ax.view_init(elev=47, azim=-50, roll=0)
-
-plt.show()
+#plot_projection(points)
+plot_cloud(filtered)
 
 '''
 cv2.imshow('image', disp_map)
