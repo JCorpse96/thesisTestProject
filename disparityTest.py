@@ -273,9 +273,6 @@ def cluster_points(points_cloud):
     print(filtered_points[:10])
     print(filtered_points.shape)
 
-    # Assign a special label (e.g., -1) to points in small clusters
-    #labels[np.isin(labels, small_clusters)] = -1
-
     # Remove points belonging to small clusters
     labels = labels[~np.isin(labels, small_clusters)]
     # Now 'filtered_points' contains the points you want to keep
