@@ -4,10 +4,6 @@ This project is an early exploration of generating a point-cloud graphic, utiliz
 
 ## Input images
 
-<p align="center">
-  <img src="(https://github.com/JCorpse96/thesisTestProject/tree/main/disparity/test-left.jpg)" width="350" title="hover text">
-  <img src="your_relative_path_here_number_2_large_name" width="350" alt="accessibility text">
-</p>
+![test-left](https://github.com/JCorpse96/thesisTestProject/assets/112429952/ec7c2b26-d667-42f4-ae03-2dc431dc97f7)
 
-![alt text](https://github.com/JCorpse96/thesisTestProject/tree/main/disparity/test-left.jpg?raw=true)
-
+![test-right](https://github.com/JCorpse96/thesisTestProject/assets/112429952/859841cf-e81f-485b-bdec-19b71202e2d7)
