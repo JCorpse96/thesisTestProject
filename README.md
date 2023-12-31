@@ -2,7 +2,7 @@
 
 This project is an early exploration of generating a point-cloud graphic, utilizing Stereo Vision.
 
-## Input images
+## Input images in greyscale
 
 ![image](https://github.com/JCorpse96/thesisTestProject/assets/112429952/4e6d9d4a-cc68-4b08-89e5-9dc82533e607)
 
@@ -19,7 +19,7 @@ This project is an early exploration of generating a point-cloud graphic, utiliz
 
 ## Heatmaps of disparity
 
-### Primary heatmap                                  ### Filtered heatmap with region of interest
+### Primary heatmap and Filtered heatmap with region of interest
 
 ![image](https://github.com/JCorpse96/thesisTestProject/assets/112429952/b11f4701-af37-4c15-96a4-c1900d78fe8b)
 
