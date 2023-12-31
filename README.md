@@ -35,5 +35,5 @@ This project is an early exploration of generating a point-cloud graphic, utiliz
 
 ### Quarter view
 
-![image](https://github.com/JCorpse96/thesisTestProject/assets/112429952/3e07b634-70bb-48ab-a2ec-5304dbd61b06)
+![image](https://github.com/JCorpse96/thesisTestProject/assets/112429952/906c2af2-1b5a-407f-ada9-6c3b3e61afd4)
 
