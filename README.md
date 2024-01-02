@@ -17,9 +17,9 @@ This project is an early exploration of generating a point-cloud graphic, utiliz
 ![image](https://github.com/JCorpse96/thesisTestProject/assets/112429952/d116d6ae-c3ff-452b-ba0e-b0192721bd2d)
 
 
-## Heatmaps of disparity
+## Hightmaps of disparity
 
-### Primary heatmap and Filtered heatmap with region of interest
+### Primary hightmap and Filtered highmap with region of interest
 
 ![image](https://github.com/JCorpse96/thesisTestProject/assets/112429952/b11f4701-af37-4c15-96a4-c1900d78fe8b)
 
@@ -36,4 +36,10 @@ This project is an early exploration of generating a point-cloud graphic, utiliz
 ### Quarter view
 
 ![image](https://github.com/JCorpse96/thesisTestProject/assets/112429952/906c2af2-1b5a-407f-ada9-6c3b3e61afd4)
+
+
+## OPEN3D Point-cloud object with shadow removed
+
+![open3d_pointcloud_15_60_no-shadow](https://github.com/JCorpse96/thesisTestProject/assets/112429952/12dcff5a-985a-406f-9c41-7fe98fe40552)
+
 
